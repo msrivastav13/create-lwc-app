@@ -1,9 +1,15 @@
 const compiler = require('@lwc/compiler')
+const loaderUtils = require('loader-utils')
 const babel = require('@babel/core')
-const { getInfoFromPath } = require('./module')
+const { getConfig, getInfoFromPath } = require('./module')
+
+import { lwcConfig } from '../../lwc-services/src/config/lwcConfig'
+const stylesheetConfig = lwcConfig.lwcCompilerStylesheetConfig	
+const experimentalDynamicComponent = lwcConfig.lwcExperimentalDynamicComponent
 
 module.exports = function (source: any) {
     const { resourcePath } = this
+    const config = getConfig(loaderUtils.getOptions(this))
 
     let info
     try {
@@ -13,6 +19,21 @@ module.exports = function (source: any) {
             name: '',
             namespace: ''
         }
+    }
+
+    let compilerOutput: any = {}	
+    if (	
+        config.mode === 'development' &&	
+        lwcConfig.lwcCompilerOutput &&	
+        lwcConfig.lwcCompilerOutput	
+    ) {	
+        compilerOutput = lwcConfig.lwcCompilerOutput.development	
+    } else if (	
+        config.mode === 'production' &&	
+        lwcConfig.lwcCompilerOutput &&	
+        lwcConfig.lwcCompilerOutput.production	
+    ) {	
+        compilerOutput = lwcConfig.lwcCompilerOutput.production	
     }
 
     let codeTransformed = source
@@ -39,7 +60,10 @@ module.exports = function (source: any) {
     compiler
         .transform(codeTransformed, resourcePath, {
             name: info.ns,
-            namespace: 'my'
+            namespace: 'my',
+            outputConfig: compilerOutput,	
+            stylesheetConfig,	
+            experimentalDynamicComponent
         })
         .then((res: any) => {
             cb(null, res.code)
